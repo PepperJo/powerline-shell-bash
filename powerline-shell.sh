@@ -175,7 +175,6 @@ if [ "$IS_GIT" = true ]; then
                         git_segment "${BASH_REMATCH[$i+1]}" $GIT_BEHIND_FG $GIT_BEHIND_BG $GIT_BEHIND
                     fi
                 done
-                echo ${BASH_REMATCH[6]}
             fi
 
             # stats
