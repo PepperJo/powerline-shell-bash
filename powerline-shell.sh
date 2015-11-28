@@ -160,13 +160,15 @@ if [ "$IS_GIT" = true ]; then
     if [ -n "$GIT_OUTPUT" ]; then
         mapfile -t GIT_OUTPUT <<<"$GIT_OUTPUT"
         IS_DIRTY=false
-        GIT_REGEX='^## (\S*)\.{3}(\S*)( \[(ahead ([[:digit:]]+)(, )?)?(behind ([[:digit:]]+))?\])?)?$'
-        if [[ "${GIT_OUTPUT[0]}" =~ $GIT_REGEX ]]; then
+        GIT_REGEX='^## ([^.]*)(\.{3}(\S+))?( \[(ahead ([[:digit:]]+)(, )?)?(behind ([[:digit:]]+))?\])?)?$'
+        GIT_REGEX2='^## Initial commit on (\S*)$'
+        if [[ "${GIT_OUTPUT[0]}" =~ $GIT_REGEX ]] || [[ "${GIT_OUTPUT[0]}" =~  $GIT_REGEX2 ]]; then
             # branch (local)
             BRANCH=${BASH_REMATCH[1]}
 
             # ahead / behind
             #TODO
+            # echo ${BASH_REMATCH[4]}
 
             # stats
             for code in "${GIT_OUTPUT[@]:1}"; do
