@@ -74,6 +74,16 @@ function color {
     color_template "[$1;5;$2m"
 }
 
+function search_dir_parents {
+    # $1=dirname $2=path
+    local parent_dir="$2"
+    while [[ "$parent_dir" != "/" ]] ; do
+        [ -e "$parent_dir/$1" ] && return 1
+        parent_dir=$(dirname "$parent_dir")
+    done
+    return 0;
+}
+
 FG_SEGMENTS=()
 BG_SEGMENTS=()
 CONTENT_SEGMENTS=()
@@ -139,23 +149,20 @@ GIT_NOTSTAGED="\u270E"
 GIT_UNTRACKED="\u2753"
 GIT_CONFLICTED="\u273C"
 
-PARENT_DIR=$PWD
-IS_GIT=false
-while [ -n $PARENT_DIR ] ; do
-    [ -e "$PARENT_DIR/.git" ] && IS_GIT=true; break
-    PARENT_DIR=$(dirname $PARENT_DIR)
-done
+# PARENT_DIR=$PWD
+# IS_GIT=false
+# while [ -n $PARENT_DIR ] ; do
+#     [ -e "$PARENT_DIR/.git" ] && IS_GIT=true; break
+#     PARENT_DIR=$(dirname $PARENT_DIR)
+# done
 
-function git_segment {
+function svn_segment {
     # $1=number $2=fg $3=bg $4=char
-    if [ -n "$1" ]; then
-        local str
-        (( $1 == 1 )) && str="$4" || str="$1$4"
-        append_segment $2 $3 $str
-    fi
+    [ -n "$1" ] && append_segment $2 $3 "${1#1}$4"
 }
 
-if [ "$IS_GIT" = true ]; then
+search_dir_parents ".git" $PWD
+if [[ "$?" == 1 ]]; then
     GIT_OUTPUT=$(git status --porcelain -b 2>/dev/null)
     if [ -n "$GIT_OUTPUT" ]; then
         mapfile -t GIT_OUTPUT <<<"$GIT_OUTPUT"
@@ -170,9 +177,9 @@ if [ "$IS_GIT" = true ]; then
             if ((${#BASH_REMATCH[@]} > 5)); then
                 for ((i=6;i<=${#BASH_REMATCH[@]};i++)); do
                     if [[ "${BASH_REMATCH[$i]}" == "ahead" ]]; then
-                        git_segment "${BASH_REMATCH[$i+1]}" $GIT_AHEAD_FG $GIT_AHEAD_BG $GIT_AHEAD
+                        svn_segment "${BASH_REMATCH[$i+1]}" $GIT_AHEAD_FG $GIT_AHEAD_BG $GIT_AHEAD
                     elif [[ "${BASH_REMATCH[$i]}" == "behind" ]]; then
-                        git_segment "${BASH_REMATCH[$i+1]}" $GIT_BEHIND_FG $GIT_BEHIND_BG $GIT_BEHIND
+                        svn_segment "${BASH_REMATCH[$i+1]}" $GIT_BEHIND_FG $GIT_BEHIND_BG $GIT_BEHIND
                     fi
                 done
             fi
@@ -190,10 +197,10 @@ if [ "$IS_GIT" = true ]; then
                     GIT_STAGED_NO=$(($GIT_STAGED_NO + 1))
                 fi
             done
-            git_segment "$GIT_STAGED_NO" $GIT_STAGED_FG $GIT_STAGED_BG $GIT_STAGED
-            git_segment "$GIT_NOTSTAGED_NO" $GIT_NOTSTAGED_FG $GIT_NOTSTAGED_BG $GIT_NOTSTAGED
-            git_segment "$GIT_UNTRACKED_NO" $GIT_UNTRACKED_FG $GIT_UNTRACKED_BG $GIT_UNTRACKED
-            git_segment "$GIT_CONFLICTED_NO" $GIT_CONFLICTED_FG $GIT_CONFLICTED_BG $GIT_CONFLICTED
+            svn_segment "$GIT_STAGED_NO" $GIT_STAGED_FG $GIT_STAGED_BG $GIT_STAGED
+            svn_segment "$GIT_NOTSTAGED_NO" $GIT_NOTSTAGED_FG $GIT_NOTSTAGED_BG $GIT_NOTSTAGED
+            svn_segment "$GIT_UNTRACKED_NO" $GIT_UNTRACKED_FG $GIT_UNTRACKED_BG $GIT_UNTRACKED
+            svn_segment "$GIT_CONFLICTED_NO" $GIT_CONFLICTED_FG $GIT_CONFLICTED_BG $GIT_CONFLICTED
         else
             GIT_OUTPUT=$(git describe --tags --always 2> /dev/null)
             [ $? == 0 ] && BRANCH="$GIT_OUTPUT"
@@ -208,7 +215,18 @@ if [ "$IS_GIT" = true ]; then
 fi
 
 # svn
-
+# search_dir_parents ".svn" $PWD
+# if [[ "$?" == 1 ]]; then
+#     SVN_OUTPUT=$(svn status 2>/dev/null)
+#     if [ -n "$SVN_OUTPUT" ]; then
+#         mapfile -t SVN_OUTPUT <<<"$SVN_OUTPUT"
+#         for line in ${SVN_OUTPUT[@]}; do
+#             SVN_REGEX='^[ACDIMR\\!\\~]'
+#             [[ "$line" =~  $SVN_REGEX ]] && SVN_CHANGES_NO=$(($SVN_CHANGES_NO + 1))
+#         done
+#         svn_segment "$SVN_CHANGES_NO" $SVN_CHANGES_FG $SVN_CHANGES_BG ""
+#     fi
+# fi
 
 # jobs
 [[ "$2" != "0" ]] && append_segment $JOBS_FG $JOBS_BG "&$2"
@@ -233,5 +251,4 @@ for i in ${!FG_SEGMENTS[@]}; do
     separator $BG_COLOR $NEXT_BG_COLOR
 done
 # reset
-color_template "[0m "
-
+color_template "[0m"
